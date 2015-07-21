@@ -692,3 +692,14 @@ function require_filename(name::AbstractString)
 end
 const reload = require
 export reload
+
+function complement!(s::IntSet)
+    depwarn("complement IntSets are deprecated", :complement!);
+    for n = 1:length(s.bits)
+        s.bits[n] = ~s.bits[n]
+    end
+    s.fill1s = !s.fill1s
+    s
+end
+complement(s::IntSet) = complement!(copy(s))
+export complement, complement!
