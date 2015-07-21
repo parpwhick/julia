@@ -612,20 +612,34 @@ function wait_empty(rv::RemoteValue)
 end
 
 ## core messages: do, call, fetch, wait, ref, put! ##
+type RemoteException <: Exception
+    pid::Int
+    err::Exception
+    bt::AbstractString
+end
 
-function run_work_thunk(thunk)
+function show(io::IO, ex::RemoteException)
+    print("RemoteException on worker ", ex.pid, ": ", ex.err, "\nRemote backtrace:\n", ex.bt, "\n")
+end
+
+function run_work_thunk(thunk, print_error)
     local result
     try
         result = thunk()
     catch err
-        print(STDERR, "exception on ", myid(), ": ")
-        display_error(err,catch_backtrace())
-        result = err
+        bt = catch_backtrace()
+        if print_error
+            print(STDERR, "exception on ", myid(), ": ")
+            display_error(err, bt)
+        end
+        io=IOBuffer()
+        show_backtrace(io, bt)
+        result = RemoteException(myid(), err, takebuf_string(io))
     end
     result
 end
 function run_work_thunk(rv::RemoteValue, thunk)
-    put!(rv, run_work_thunk(thunk))
+    put!(rv, run_work_thunk(thunk, false))
     nothing
 end
 
@@ -689,7 +703,8 @@ remotecall(id::Integer, f, args...) = remotecall(worker_from_id(id), f, args...)
 
 # faster version of fetch(remotecall(...))
 function remotecall_fetch(w::LocalProcess, f, args...)
-    run_work_thunk(local_remotecall_thunk(f,args))
+    v=run_work_thunk(local_remotecall_thunk(f,args), false)
+    isa(v, Exception) ? throw(v) : v
 end
 
 function remotecall_fetch(w::Worker, f, args...)
@@ -701,7 +716,7 @@ function remotecall_fetch(w::Worker, f, args...)
     send_msg(w, CallMsg{:call_fetch}(f, args, oid))
     v = wait_full(rv)
     delete!(PGRP.refs, oid)
-    v
+    isa(v, Exception) ? throw(v) : v
 end
 
 remotecall_fetch(id::Integer, f, args...) =
@@ -1319,10 +1334,20 @@ end
 
 macro everywhere(ex)
     quote
+        errors = Exception[]
         @sync begin
             for w in PGRP.workers
-                @async remotecall_fetch(w.id, ()->(eval(Main,$(Expr(:quote,ex))); nothing))
+                @async begin
+                    try
+                        remotecall_fetch(w.id, ()->(eval(Main,$(Expr(:quote,ex))); nothing))
+                    catch err
+                        push!(errors, err)
+                    end
+                end
             end
+        end
+        if length(errors) > 0
+            throw(errors[1])
         end
     end
 end
@@ -1392,12 +1417,7 @@ function pmap(f, lsts...; err_retry=true, err_stop=false, pids = workers())
                     (idx, fvals) = tasklet
                     busy_workers[pididx] = true
                     try
-                        result = remotecall_fetch(wpid, f, fvals...)
-                        if isa(result, Exception)
-                            ((wpid == myid()) ? rethrow(result) : throw(result))
-                        else
-                            results[idx] = result
-                        end
+                        results[idx] = remotecall_fetch(wpid, f, fvals...)
                     catch ex
                         if err_retry
                             push!(retryqueue, (idx,fvals, ex))

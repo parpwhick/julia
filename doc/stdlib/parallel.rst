@@ -247,7 +247,7 @@ General Parallel Computing Support
 
 .. function:: fetch(RemoteRef)
 
-   Wait for and get the value of a remote reference.
+   Wait for and get the value of a remote reference. If the remote value is an exception, wraps the exception in a ``RemoteException`` and throws it.
 
 .. function:: remotecall_wait(id, func, args...)
 
@@ -255,7 +255,7 @@ General Parallel Computing Support
 
 .. function:: remotecall_fetch(id, func, args...)
 
-   Perform ``fetch(remotecall(...))`` in one message.
+   Perform ``fetch(remotecall(...))`` in one message. Throws a ``RemoteException`` which wraps any exception caused by executing ``func`` on ``id``.
 
 .. function:: put!(RemoteRef, value)
 
@@ -341,6 +341,11 @@ General Parallel Computing Support
         @sync @parallel for var = range
             body
         end
+
+.. function:: @everywhere
+
+    Executes a block of code as is on all processors. In the event of exceptions on
+    any of the workers, only the first caught exception is thrown at the caller.
 
 Shared Arrays (Experimental, UNIX-only feature)
 -----------------------------------------------

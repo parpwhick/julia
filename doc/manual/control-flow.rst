@@ -627,6 +627,8 @@ built-in :exc:`Exception`\ s listed below all interrupt the normal flow of contr
 +---------------------------+
 | :exc:`ReadOnlyMemoryError`|
 +---------------------------+
+| :exc:`RemoteException`    |
++---------------------------+
 | :exc:`MethodError`        |
 +---------------------------+
 | :exc:`OverflowError`      |

@@ -163,6 +163,7 @@ export
     NullException,
     ParseError,
     ProcessExitedException,
+    RemoteException,
     SystemError,
     TypeError,
     AssertionError,

@@ -138,6 +138,11 @@ Language changes
   * `global x` in a nested scope is now a syntax error if `x` is local
     to the enclosing scope ([#7264]/[#11985]).
 
+  * `remotecall_fetch` and `fetch` now rethrow any remote exception as a `RemoteException`.
+    Previously they would return the remote exception object. The actual remote exception and
+    the remote backtrace are available in the thrown `RemoteException`.
+
+
 Command line option changes
 ---------------------------
 
