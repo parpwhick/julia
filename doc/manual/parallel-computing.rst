@@ -444,6 +444,22 @@ preemptively. This means context switches only occur at well-defined
 points: in this case, when :func:`remotecall_fetch` is called.
 
 
+Channels
+--------
+Channels provide for a fast means of inter-task communication. A
+``Channel(T::Type, n::Int)`` is a shared queue of maximum length ``n``
+holding objects of type ``T``. Multiple readers can read off the channel
+via ``fetch`` and ``take!``. Multiple writers can add to the channel via
+``put!``. ``isready`` tests for the prescence of any object in
+the channel, while ``wait`` waits for an object to become available.
+
+A Channel can be used as an iterable object in a ``for`` loop, in which
+case the loop runs till the channel is open. The loop variable takes on
+all values added to the channel. ``close`` closes a Channel causing
+the loop to terminate.
+
+
+
 Shared Arrays (Experimental)
 -----------------------------------------------
 
